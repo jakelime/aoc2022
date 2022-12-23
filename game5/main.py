@@ -1,7 +1,8 @@
 import time
 from pathlib import Path
 import pandas as pd
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
+import copy
 
 
 class Move:
@@ -22,7 +23,7 @@ class Move:
 
     @staticmethod
     def move9000(board: dict, command: str):
-        new_board = {}
+        new_board = OrderedDict()
         command = Move.read_command(command)
         for _ in range(command.n):
             crate = board[command.i_from].pop()
@@ -34,19 +35,40 @@ class Move:
 
     @staticmethod
     def move9001(board: dict, command: str):
-        new_board = {}
+        new_board = OrderedDict()
         command = Move.read_command(command)
-        for _ in range(command.n):
+
+        if command.n == 1:
             crate = board[command.i_from].pop()
             board[command.i_to].append(crate)
+        else:
+            column = copy.deepcopy(
+                board[command.i_from]
+            )  # the column of crates to be moved from
+
+            crates = copy.deepcopy(
+                column[-command.n :]
+            )  # the number of crates to be moved
+            remaining = column[:(len(column) - command.n)]
+
+            # print(f"crates = \n{crates}")
+            # print(f"board[command.i_from] = \n{board[command.i_from]}")
+            # print(f"column = \n{column}")
+            # print(f"remaining = \n{remaining}")
+
+            board[command.i_from] = remaining  # after removing the number of crates
+            board[command.i_to] = board[command.i_to] + crates
+
         print(
             f" >>moved {command.n} crates from index{command.i_from} to index{command.i_to}"
         )
         return new_board
+
+
 class LayoutReader:
     def __init__(self, filepath=None):
         self.axis_mapping = {}
-        self.layout = {}
+        self.layout = OrderedDict()
         self.axis_mapping, self.layout, self.instructions = self.get_data(filepath)
 
     @staticmethod
@@ -75,8 +97,8 @@ class LayoutReader:
         return axis_mapping
 
     @staticmethod
-    def get_columns(board_data: list[list], axis_to_index_map: dict) -> dict:
-        data = {}
+    def get_columns(board_data: list[list], axis_to_index_map: dict) -> OrderedDict:
+        data = OrderedDict()
         for k in axis_to_index_map.keys():
             data[k] = []
         for row in board_data:
@@ -141,13 +163,21 @@ class Game:
             m.move9000(board=layout.layout, command=instr)
         self.print_results()
 
-    def part2(self):
+    def part2(self, print_results=False):
         m = Move()
         layout = self.layout
-        for _, instr in enumerate(layout.instructions):
-            m.move9001(board=layout.layout, command=instr)
-        self.print_results()
 
+        if print_results:
+            self.print_board()
+        for i, instr in enumerate(layout.instructions):
+            # if i > 0:
+            #     break
+            m.move9001(board=layout.layout, command=instr)
+            if print_results:
+                self.print_board()
+                self.print_results()
+        if not print_results:
+            self.print_results()
 
     def get_filepath(self, filename: str = "example.txt") -> Path:
         cwd_ = Path(__file__)
@@ -158,21 +188,37 @@ class Game:
         return fileinput
 
     def print_results(self):
-        result_list = [v[-1] for k, v in self.layout.layout.items()]
+        result_list = [v[-1] if v else " " for _, v in self.layout.layout.items()]
         result = "".join(result_list)
         print(f"{result = }")
+
+    def print_board(self):
+        pl = OrderedDict()
+        max_length = 0
+        for v in self.layout.layout.values():
+            if len(v) > max_length:
+                max_length = len(v)
+
+        for k, v in self.layout.layout.items():
+            if len(v) != max_length:
+                nv = v + ((max_length - len(v)) * [""])
+                pl[k] = nv[::-1]
+            else:
+                pl[k] = v[::-1]
+
+        df = pd.DataFrame(pl)
+        print(df)
 
 
 def main():
 
-    game = Game("example.txt")
-    # game = Game("input.txt")
+    # game = Game("example.txt")
+    game = Game("input.txt")
 
     # game.part1()
 
     game.part2()
-
-
+    # game.print_results()
 
 
 if __name__ == "__main__":
