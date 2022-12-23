@@ -1,18 +1,54 @@
 import time
 from pathlib import Path
 import pandas as pd
-import csv
+from collections import namedtuple
 
 
-class Mover:
-    def __init__(self):
-        pass
+class Move:
+    @staticmethod
+    def read_command(command: str):
+        try:
+            commands = command.split(" ")
+            for keyword in ["move", "from", "to"]:
+                if keyword not in commands:
+                    raise Exception(f"{keyword=} not found in command")
+            Command = namedtuple("Command", "n i_from i_to")
+            command = Command(
+                n=int(commands[1]), i_from=int(commands[3]), i_to=int(commands[5])
+            )
+            return command
+        except Exception as e:
+            raise Exception(f"Could not parse command; {e}")
 
+    @staticmethod
+    def move9000(board: dict, command: str):
+        new_board = {}
+        command = Move.read_command(command)
+        for _ in range(command.n):
+            crate = board[command.i_from].pop()
+            board[command.i_to].append(crate)
+        print(
+            f" >>moved {command.n} crates from index{command.i_from} to index{command.i_to}"
+        )
+        return new_board
 
-class CreateLayout:
+    @staticmethod
+    def move9001(board: dict, command: str):
+        new_board = {}
+        command = Move.read_command(command)
+        for _ in range(command.n):
+            crate = board[command.i_from].pop()
+            board[command.i_to].append(crate)
+        print(
+            f" >>moved {command.n} crates from index{command.i_from} to index{command.i_to}"
+        )
+        return new_board
+
+class LayoutReader:
     def __init__(self, filepath=None):
         self.axis_mapping = {}
-        self.layout = self.get_data(filepath)
+        self.layout = {}
+        self.axis_mapping, self.layout, self.instructions = self.get_data(filepath)
 
     @staticmethod
     def check_axis_in_sequence(given_sequence: list[int]):
@@ -56,7 +92,7 @@ class CreateLayout:
                     raise e
         return data
 
-    def get_data(self, fpath):
+    def get_data(self, fpath: Path) -> tuple:
 
         board_datalist, axis_datalist, instructions_datalist = [], [], []
         step1_findaxis = False
@@ -73,9 +109,7 @@ class CreateLayout:
                             # Example: axis_datalist = [1, 2, 3]
                             axis_datalist = [int(x) for x in temp.split(" ") if x]
                             self.check_axis_in_sequence(axis_datalist)
-                            self.axis_mapping = self.get_axis_mapping_dict(
-                                axis_datalist
-                            )
+                            axis_mapping = self.get_axis_mapping_dict(axis_datalist)
                             step1_findaxis = True
                         except Exception as e:
                             raise Exception(
@@ -91,20 +125,30 @@ class CreateLayout:
                     instructions_datalist = [x for x in instructions_datalist if x]
 
                 line = f.readline()
-        data = self.get_columns(board_datalist, self.axis_mapping)
-        return data
+        layout = self.get_columns(board_datalist, axis_mapping)
+
+        return axis_mapping, layout, instructions_datalist
 
 
 class Game:
     def __init__(self, filename: str = "example.txt"):
         self.filepath = self.get_filepath(filename)
-        self.layout = CreateLayout(self.filepath).layout
-
-        print(self.layout)
+        self.layout = LayoutReader(self.filepath)
 
     def part1(self):
-        pass
-        # print(f"{self.df=}")
+        m = Move()
+        layout = self.layout
+        for _, instr in enumerate(layout.instructions):
+            m.move9000(board=layout.layout, command=instr)
+        self.print_results()
+
+    def part2(self):
+        m = Move()
+        layout = self.layout
+        for _, instr in enumerate(layout.instructions):
+            m.move9001(board=layout.layout, command=instr)
+        self.print_results()
+
 
     def get_filepath(self, filename: str = "example.txt") -> Path:
         cwd_ = Path(__file__)
@@ -114,14 +158,22 @@ class Game:
             raise Exception(f"invalid filepath, {fileinput=}")
         return fileinput
 
+    def print_results(self):
+        result_list = [v[-1] for k, v in self.layout.layout.items()]
+        result = "".join(result_list)
+        print(f"{result = }")
+
 
 def main():
 
     game = Game("example.txt")
     # game = Game("input.txt")
+
     # game.part1()
-    # game.part2()
-    pass
+
+    game.part2()
+
+
 
 
 if __name__ == "__main__":
