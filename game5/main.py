@@ -43,7 +43,6 @@ class Move:
             f" >>moved {command.n} crates from index{command.i_from} to index{command.i_to}"
         )
         return new_board
-
 class LayoutReader:
     def __init__(self, filepath=None):
         self.axis_mapping = {}
